@@ -727,7 +727,7 @@ def QA_brain_extract(anat_path,output_path,anat_format,cfg):
     
     anat_brain_path = anat_path.replace('.nii.gz','_brain.nii.gz')
     png_path = os.path.join(output_path, f'{anat_format}_brain.png')
-    call = [f'fsleyes render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
+    call = [f'{exe} render --hideCursor --hidex --hidez  --voxelLoc {dim1} {slicee} {dim3} ',
             f'--xcentre -0 0 --ycentre -0 0 --zcentre -0 0 --labelSize 30 ',
             f'--outfile {png_path}',
             f'{anat_brain_path}',
@@ -2132,7 +2132,7 @@ def denoise_matlab(input_path, output_path, delta_path, code_path, cfg, dn_type)
 #     os.system(' '.join(call))
 
 
-def denoise_img(input_path, dim, ouput_path):
+def denoise_img(input_path, dim, ouput_path,cfg):
     """
     Function that denoises data with Ants tools
    
@@ -3451,7 +3451,7 @@ def get_param_names_model(model, is_alive):
             maximums[:, 0] = -np.inf  
         else:
             patterns = ["*sandi*di*","*sandi*de*","*sandi*fneurite*", "*sandi*fsoma*","*sandi*rs*"]
-            lims = [ (0, 3.5), (0, 3.5),  (0, 0.9), (0,0.3), (0, 25)]
+            lims = [ (0, 3.5), (0, 3.5),  (0, 1), (0,1), (0, 20)]
             maximums = np.full((len(patterns), 2), np.inf)
             maximums[:, 0] = -np.inf  
         
