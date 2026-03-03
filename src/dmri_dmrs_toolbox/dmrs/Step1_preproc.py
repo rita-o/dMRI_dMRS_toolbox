@@ -29,9 +29,9 @@ from dmri_dmrs_toolbox.misc.custom_functions import create_directory
 
 def Step1_preproc(cfg):
     
-
+    
     subj_list = cfg['subj_list'] 
-    data_path = cfg['data_path']
+    data_path = cfg['data_path']     
     scan_list = pd.read_excel(os.path.join(data_path, cfg['scan_list_name'] ))
     
     ######## SUBJECT-WISE OPERATIONS ########
@@ -92,56 +92,22 @@ def Step1_preproc(cfg):
                 # Define paths
                 input_path        = raw_path
                 output_path       = os.path.join(bids_strc.get_path(),f'TM_{str(TM)}')
-
+                
                 # Delete output folder if redo_processing is on
                 if cfg['redo_processing']==1 and os.path.exists(output_path):
                         print("Your previous results will be deleted and will be processed again")
-                        #input()
                         shutil.rmtree(output_path)
-
+                
                 # Do analysis if it wasn't done before or if redo_processing is on
                 if cfg['redo_processing'] == 1 or not os.path.exists(output_path):
-
+                    
                     create_directory(output_path)
                 
-                scan_list_format_matlab = "[" + " ".join(map(str, metab_sequence_number)) + "]"
-                coil_type         = subj_data_metab['coil_type'].iloc[0]
-                toolbox_path      = os.path.join(cfg['code_path2'],'dSPECIAL_matlab_codes_Toi')
-                LCMpath           = cfg['LC_model']
-    
-                # Chose basis set with TM closer to the acquired TM
-                basis_sets_folder = cfg['basis_set']
-                basis_list        = glob.glob(os.path.join(basis_sets_folder, "*.BASIS"))
-                tm_candidates = []
-                for basis_file in basis_list:
-                    match = re.search(r"TM(\d+)", basis_file)
-                    if match:
-                        tm_value = int(match.group(1))
-                        tm_candidates.append((tm_value, basis_file))
-                tm_closest, basis_set = min(tm_candidates,
-                    key=lambda x: abs(x[0] - TM))
-                
-                
-                # Sh command of matlab files
-                cmd = [f"{toolbox_path}/run_processing_dmrs_matlab.sh",
-                       cfg['MATLAB_Runtime'],
-                    input_path,
-                    output_path,
-                    scan_list_format_matlab,
-                    coil_type,
-                    basis_set,
-                    LCMpath,
-                       "1"]
-                
-                print("\nShell command:")
-                print(" ".join(cmd))
-                print()
-                result = subprocess.run(cmd, check=False)
                     scan_list_format_matlab = "[" + " ".join(map(str, metab_sequence_number)) + "]"
                     coil_type         = subj_data_metab['coil_type'].iloc[0]
                     toolbox_path      = files("dmri_dmrs_toolbox.dmrs").joinpath("dSPECIAL_matlab_codes_Toi")
                     LCMpath           = cfg['LC_model_path']
-
+        
                     # Chose basis set with TM closer to the acquired TM
                     basis_sets_folder = cfg['basis_set']
                     basis_list        = glob.glob(os.path.join(basis_sets_folder, "*.BASIS"))
@@ -153,8 +119,8 @@ def Step1_preproc(cfg):
                             tm_candidates.append((tm_value, basis_file))
                     tm_closest, basis_set = min(tm_candidates,
                         key=lambda x: abs(x[0] - TM))
-
-
+                    
+                    
                     # Sh command of matlab files
                     cmd = [f"{toolbox_path}/run_processing_dmrs_matlab.sh",
                            cfg['MATLAB_Runtime'],
@@ -163,8 +129,9 @@ def Step1_preproc(cfg):
                         scan_list_format_matlab,
                         coil_type,
                         basis_set,
-                        LCMpath]
-
+                        LCMpath,
+                        "1"]
+                    
                     print("\nShell command:")
                     print(" ".join(cmd))
                     print()

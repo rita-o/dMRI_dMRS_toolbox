@@ -27,6 +27,7 @@ else
       args="${args} \"${token}\"" 
       shift
   done
+  chmod +x "${exe_dir}/processing_dmrs_matlab" 2>/dev/null
   eval "\"${exe_dir}/processing_dmrs_matlab\"" $args
 fi
 exit

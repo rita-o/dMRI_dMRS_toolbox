@@ -1,7 +1,4 @@
-from graymatter_swissknife.models.struct_functions.scipy_sphere import  sphere_murdaycotts
-from graymatter_swissknife.models.struct_functions.scipy_cylinder import cylinder_perpendicular_signal
-
-from dmrsdata import DMRSDataset
+from dmri_dmrs_toolbox.dmrs.dmrsdata import DMRSDataset
 import numpy as np
 import pandas as pd
 from scipy.special import erf

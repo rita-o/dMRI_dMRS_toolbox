@@ -622,7 +622,7 @@ class DMRSDataset:
         for file in sorted(Path(path_lcm_quantified).iterdir()):
             if '.coord' in file.name:
                 datasets.append(DMRSSequenceData(file))
-                seq_no = file.name.split("_data_ser_processed.coord")[0].split("_")[-1]
+                seq_no = file.name.split("_data_")[0].split("_")[-1]
                 method_path = path_bruker_rawdata/seq_no/"method"
                 header_info= read_header_file_info(method_path,["Bvalue", "DiffusionTime"],[])
                 b_value = header_info['Bvalue']/1e3
