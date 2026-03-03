@@ -400,7 +400,11 @@ def Step3_preproc(cfg):
                         bids_strc.set_param(description='allDelta-lowb')
                         create_directory(bids_strc.get_path())
                         bvals_aux = np.loadtxt(o_bids_strc.get_path('bvalsNom.txt'))
-                        desiredbvals = np.unique(bvals_aux[bvals_aux<=1000])
+                        if cfg['is_alive']=='ex_vivo':
+                            desiredbvals = np.unique(bvals_aux[bvals_aux<=2000])
+                        else:
+                            desiredbvals = np.unique(bvals_aux[bvals_aux<=1000])
+
                         old_dataset = {"dwi":   o_bids_strc.get_path('dwi.nii.gz'), 
                                         "bvals": o_bids_strc.get_path('bvalsNom.txt'),
                                         "bvecs": o_bids_strc.get_path('bvecs.txt')}
