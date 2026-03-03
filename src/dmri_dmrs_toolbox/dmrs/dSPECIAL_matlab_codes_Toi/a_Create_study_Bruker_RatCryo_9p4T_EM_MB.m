@@ -15,6 +15,7 @@ function [] =  a_Create_study_Bruker_RatCryo_9p4T_EM_MB(folder_exp, folder_resul
 
 % disp(['execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: ',folder_results ,'\',num2str(expnb) ])
 % disp(['execution a_Create_study_Bruker_9p4T_EM (Toi version 10.11.2025) on data: ',folder_exp ,'/',num2str(expnb) ]) % linux exe
+% Adapted new rawdata.job0 edits by ELoise (EM2 files)
 
 tic
 %% Parameters - method file
@@ -33,7 +34,8 @@ methodfile = fileread(folder_exp +num2str(expnb)+ "/method"); % linux exe
 
 % date and time (NO NEED THIS)
 % dateexp = ''; startind_date=strfind(methodfile,['$$ ' dateexp]); date=methodfile(startind_date+3:startind_date+21); study.time=date;
-tok     = regexp(folder_exp,'\d{8}_\d{6}','match','once'); dt = datetime(tok,'InputFormat','yyyyMMdd_HHmmss'); 
+tok     = regexp(folder_exp,'\d{8}_\d{6}','match','once'); 
+dt = datetime(tok,'InputFormat','yyyyMMdd_HHmmss'); 
 date    = char(dt,'yyyy-MM-dd HH:mm:ss'); study.time = date;            % extract from directory
 % timeacq = ['Run_',char(datetime('now','Format','yyyyMMdd_HHmmss'))];    % unique ID for each run
 timeacq = 'data';  % unique ID for each run
@@ -299,7 +301,7 @@ study.process.DCoffset=0; %default
 
 if ~isfolder(fullfile(folder_results,'raw')); mkdir(fullfile(folder_results,'raw')); end
 save(fullfile(folder_results,'raw',filename),'study');
-
+disp(['step1 ',filename,' saved in raw']) %EM2 (16/02/2026)
 %% 2) read data rawdatajob0 - moved from the separate code Read_bruker_rawdatajob0.... to here - JM 27/5/24
 
 nloops=length(study.scalingloops);
@@ -370,6 +372,18 @@ study.datajob0.imag=study.datajob0.imag./study.params.gain./voxvol.*study.nav/(n
 
 study=rmfield(study,'nav');
 study=rmfield(study,'nrep');
+
+% EM2 (14/02/2026) 
+% study=rmfield(study,'data');
+
+filename=['Bruker_' date(1:10)  '_'  num2str(expnb) '_' timeacq '_rawdatajob0.mat'];
+
+if ~isfolder(fullfile(folder_results,'raw')); mkdir(fullfile(folder_results,'raw')); end
+
+save(fullfile(folder_results,'raw',filename),'study');
+
+disp(['step2 ',filename,' saved in raw'])  
+%EM2 (end) (14/02/2026)
 
 %%
 %simple display of what is actually saved (study.data...)
@@ -458,7 +472,7 @@ elseif isfile(folder_exp + num2str(expnb)+ "/pdata/1/fid_refscan.64") %for 360v3
     %store data
     disp('refscan saved')
     % fileid=fopen(folder_exp + num2str(expnb)+ "\pdata\1\fid_refscan.64",'r','ieee-le'); %read binary format
-fileid=fopen(folder_exp + num2str(expnb)+ "/pdata/1/fid_refscan.64",'r','ieee-le'); %read binary format
+    fileid=fopen(folder_exp + num2str(expnb)+ "/pdata/1/fid_refscan.64",'r','ieee-le'); %read binary format
     if fileid == -1
         disp('Cannot open file');
         return
@@ -519,10 +533,9 @@ fileid=fopen(folder_exp + num2str(expnb)+ "/pdata/1/fid_refscan.64",'r','ieee-le
     set(ax3,'TickDir','out','Box','off'); legend(ax3,'refscan','Box','off');
 
 end
+plotname = ['Bruker_' date(1:10) '_' num2str(expnb) '_' timeacq '.png']; 
+saveas(gcf, fullfile(folder_results, 'raw', plotname));  % Save the figure as a PNG file, should save all files
+
 disp('Done!')
 toc
 end
-
-
-
-

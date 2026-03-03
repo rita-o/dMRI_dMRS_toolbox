@@ -1,4 +1,4 @@
-function processing_dmrs_matlab(input_path, output_path, data_folders_list, coil_type, basis_set, LCMpath)
+function processing_dmrs_matlab(input_path, output_path, data_folders_list, coil_type, basis_set, LCMpath, job0)
 
 % Needed for compilation
 set(0,'DefaultFigureVisible','off');
@@ -6,9 +6,9 @@ warning('off','all');
 
 % Loop through data folders
 data_folders_list = str2num(data_folders_list);
+job0 = str2num(job0);
 
 for j = 1:length(data_folders_list)
-
         % Get scan id
         scan_id = data_folders_list(j);
         [~, raw_data,~] = fileparts(input_path);
@@ -35,7 +35,7 @@ for j = 1:length(data_folders_list)
         fprintf('        (Toi version 10.11.2025)\n\n');
     
         phi = 5.6;  % phase correction, only for visualization purposes
-        b_Preprocessing_FidA_9p4T_EM_MB(output_path, scan_id, phi);
+        b_Preprocessing_FidA_9p4T_EM_MB(output_path, scan_id, phi, job0);
         close all
 
         % ------------------------------------------------------------------

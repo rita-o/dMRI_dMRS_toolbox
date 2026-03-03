@@ -14,7 +14,7 @@ It provides **preprocessing and analysis pipelines** for both modalities:
 
  <br> 
 
-## 🚀 Quick Start 
+## 🚀 Quick Start  
 
 1. Install the repository and required software as described below.
 2. Prepare the cohort Excel file (see `common/example_study.xlsx`). (⚠️ Note the change of columns names in the cohort file in Dec/2025).
