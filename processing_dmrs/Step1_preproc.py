@@ -121,7 +121,8 @@ def Step1_preproc(cfg):
                     scan_list_format_matlab,
                     coil_type,
                     basis_set,
-                    LCMpath]
+                    LCMpath,
+                       "1"]
                 
                 print("\nShell command:")
                 print(" ".join(cmd))

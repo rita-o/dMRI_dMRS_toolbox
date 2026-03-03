@@ -59,7 +59,7 @@ with open(Path(cfg['data_path']) / '.config_mrs.json', 'w') as f:
 
 #### STEP 1. Process and quantify bruker data
 from Step1_preproc import *
-#Step1_preproc(cfg)
+Step1_preproc(cfg)
 
 #### STEP 2. Fitting of data (needs SwissKnife environment)
 from Step2_fitting import *
