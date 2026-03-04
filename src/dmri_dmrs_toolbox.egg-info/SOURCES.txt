@@ -4,6 +4,7 @@ src/dmri_dmrs_toolbox/__init__.py
 src/dmri_dmrs_toolbox.egg-info/PKG-INFO
 src/dmri_dmrs_toolbox.egg-info/SOURCES.txt
 src/dmri_dmrs_toolbox.egg-info/dependency_links.txt
+src/dmri_dmrs_toolbox.egg-info/requires.txt
 src/dmri_dmrs_toolbox.egg-info/top_level.txt
 src/dmri_dmrs_toolbox/dmrs/Step1_preproc.py
 src/dmri_dmrs_toolbox/dmrs/Step2_fitting.py
