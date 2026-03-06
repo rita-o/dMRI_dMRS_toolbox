@@ -675,10 +675,12 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
         roi_definitions = {
            'Isocortex': ['Isocortex'],
            'SN': ['Substantia_Nigra'],
+           'Cereb GM': ['Cerebellum'],
+           'Cereb WM': ['Cerebellum'],
            'Cerebellum': ['Cerebellum'],
            'Pallidum': ['Pallidum'],
            'Hypothalamus': ['Hypothalamus'],
-           'Hippocampal': ['Hippocampal_Formation'],
+           'Hippocampal Form': ['Hippocampal_Formation'],
            'CC': ['Corpus_Callosum'],
 
        } 

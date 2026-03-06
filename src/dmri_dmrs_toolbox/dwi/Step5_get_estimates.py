@@ -128,6 +128,11 @@ def Step5_get_estimates(cfg):
                         ROI_list.extend(cfg['ROIs_manual'])
                         if TPMs:
                             ROI_list.extend(cfg['ROIs_manual'])
+                            
+                    # If there is manual masks
+                    bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                            folderlevel='derivatives', workingdir='manual_masks')
+                    bids_manual.set_param(description='')
                         
                     ######## EXTRACT MODEL ESTIMATES ########
                     # Option 1. Extract estimates with user defined ROIs
@@ -143,7 +148,7 @@ def Step5_get_estimates(cfg):
                         # Get values of parameters inside the ROIs        
                         Data, Data_all, Data_l, Data_r = get_values_within_ROI(
                             ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
-                            vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path)
+                            vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
                         
                         # Create table structure with results
                         df_data = pd.DataFrame(Data, columns=cleaned_patterns)
@@ -416,6 +421,11 @@ def Step5_get_estimates(cfg):
                  ROI_list.append('voxel_mrs'); 
                  if TPMs:
                      ROI_list.append('voxel_mrs_GM')
+                     
+            # If there is manual masks
+            bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                  folderlevel='derivatives', workingdir='manual_masks')
+            bids_manual.set_param(description='')
             
             Data_DTIDKI    = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
             Data_DTIDKI_l  = np.empty((len(Delta_list), len(ROI_list), len(patterns)), dtype=object)
@@ -469,7 +479,7 @@ def Step5_get_estimates(cfg):
                     # Get values of parameters inside the ROIs        
                     Data, Data_all, Data_all_l, Data_all_r = get_values_within_ROI(
                         ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
-                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path)
+                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
                     
                     Data_DTIDKI[d_idx, :, :]     = Data_all
                     Data_DTIDKI_l[d_idx, :, :]   = Data_all_l
@@ -617,11 +627,12 @@ def Step5_get_estimates(cfg):
             ROI_list = cfg['ROIs_GM'] + cfg['ROIs_WM'] + cfg['ROIs_manual']
 
             bids_STE      = create_bids_structure(subj=subj, sess=sess, datatype='dwi_STE', root=cfg['data_path'] , 
-                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')               
+                          folderlevel='derivatives', workingdir=cfg['analysis_foldername'],description='microFA')        
+            output_path = os.path.join(bids_STE.get_path())
             bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']+'-To-'+'allDelta-allb', root=data_path, 
                                           folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
             bids_strc_reg.set_param(base_name='')
-             
+
             # Define atlas
             atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
 
@@ -659,10 +670,16 @@ def Step5_get_estimates(cfg):
                     ROI_list.append('voxel_mrs'); 
                     if TPMs:
                         ROI_list.append('voxel_mrs_GM')
-                        
+                
+                # If there is manual masks
+                bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                     folderlevel='derivatives', workingdir='manual_masks')
+                bids_manual.set_param(description='')
+                
                 # Determine output file
-                outfile = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
-                outfile2 = os.path.join(os.path.dirname(os.path.dirname(output_path)), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")
+                bids_STE.set_param(datatype='dwi')
+                outfile = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
+                outfile2 = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")
 
                 # Option 1. Extract estimates with user defined ROIs
                 patterns, lims, maximums = get_param_names_model('Micro_FA',cfg['is_alive'])
@@ -673,7 +690,7 @@ def Step5_get_estimates(cfg):
                     # Get values of parameters inside the ROIs        
                     Data, Data_all, Data_l, Data_r = get_values_within_ROI(
                         ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
-                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, output_path, bids_STE)
+                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
                     
                     # Save summary of means in excel format
                     df_data = []
@@ -706,3 +723,17 @@ def Step5_get_estimates(cfg):
                     roi_paths.append(bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
                
                 QA_ROIs(roi_paths, bids_strc_reg.get_path('ref_dwi.nii.gz'), bids_strc_reg.get_path(),cfg)
+            
+            if  cfg['ROIs_manual']:
+                bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                     folderlevel='derivatives', workingdir='manual_masks')
+                bids_manual.set_param(description='')
+                
+                roi_paths =  []
+                for ROI in  cfg['ROIs_manual']:
+                    roi_paths.append(bids_manual.get_path(f'mask_{ROI}.nii.gz'))
+                    
+                bids_strc = create_bids_structure(subj=subj, sess=sess, datatype="dwi", root=data_path, 
+                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'],description='allDelta-allb')
+       
+                QA_ROIs(roi_paths, bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'), bids_manual.get_path(),cfg)

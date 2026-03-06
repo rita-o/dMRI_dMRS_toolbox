@@ -1151,9 +1151,12 @@ def QA_plotSNR(bids_strc, dwi, snr, dwi_sigma, mask, bvals, output_path):
 def QA_ROIs(roi_paths, template, output_path, cfg):
    
     out_image = os.path.join(output_path, 'ROIs.png')
+    out_image_labeled = os.path.join(output_path, 'ROIs_labeled.png')
     output_txt_path = os.path.join(output_path, 'mask_ROIs.txt')
     output_mask_path = os.path.join(output_path, 'mask_ROIs.nii.gz')
     
+    # -------------- Merge ROIs into one label mask  --------------
+
     # Make mask all ROIs
     ref_img = nib.load(roi_paths[0])
     data_shape = ref_img.shape
@@ -1172,16 +1175,20 @@ def QA_ROIs(roi_paths, template, output_path, cfg):
         # Binarize the ROI and label it (overwrite label only where it's 0)
         merged_mask[(roi_data > 0) & (merged_mask == 0)] = label
         roi_name = os.path.splitext(os.path.basename(roi_path))[0]
-        label_mapping.append(f"{label}: {roi_name}")
+        label_mapping.append((label, roi_name))
         label += 1
         
     with open(output_txt_path, 'w') as f:
-        f.write("\n".join(label_mapping))
-    
+        for lab, roi_name in label_mapping:
+            f.write(f"{lab}: {roi_name}\n")
+   
     # Save merged mask
     merged_mask_img = nib.Nifti1Image(merged_mask, affine, header)
     nib.save(merged_mask_img, output_mask_path)
+    n_labels = len(label_mapping)
 
+    # -------------- Render with FSLeyes --------------
+    
     # Make fsl eyes call
     exe =  os.path.join(cfg["fsl_path"], "fsleyes")
     call = [
@@ -1195,6 +1202,7 @@ def QA_ROIs(roi_paths, template, output_path, cfg):
         '--ycentre', '0', '0',
         '--zcentre', '0', '0',
         '--labelSize', '30',
+        '--sliceLocation',
         '--zrange','0.38','0.65',
         '--sliceSpacing','0.02',
         '--sampleSlices','centre',
@@ -1206,7 +1214,7 @@ def QA_ROIs(roi_paths, template, output_path, cfg):
                 '--name', 'ROI',
                 '--overlayType', 'volume',
                 '--cmap', 'HSV',
-                '--displayRange', '0', '12',
+                '--displayRange', '0',  str(n_labels),
                 '--volume', '0',
                 '--alpha', '70.0'
             ])
@@ -1214,6 +1222,64 @@ def QA_ROIs(roi_paths, template, output_path, cfg):
     
     print(' '.join(call))
     subprocess.run(call)
+    
+    # -------------- Create legend panel --------------
+    from matplotlib import cm
+    from PIL import Image, ImageDraw, ImageFont
+    cmap = cm.get_cmap('hsv', n_labels + 1)
+
+    base_img = Image.open(out_image).convert("RGB")
+    w, h = base_img.size
+    
+    legend_width = 500
+    margin = 30
+    line_height = 40
+    box_size = 24
+    
+    canvas = Image.new("RGB", (w + legend_width, h), "white")
+    canvas.paste(base_img, (0, 0))
+    
+    draw = ImageDraw.Draw(canvas)
+    
+    # Try a nicer font, fallback if unavailable
+    try:
+        font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        font_text = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+    except:
+        font_title = ImageFont.load_default()
+        font_text = ImageFont.load_default()
+    
+    x0 = w + margin
+    y = margin
+    
+    draw.text((x0, y), "ROI labels", fill="black", font=font_title)
+    y += 50
+    
+    for lab, roi_name in label_mapping:
+        rgba = cmap(lab)
+        color = tuple(int(255 * c) for c in rgba[:3])
+    
+        # colored square
+        draw.rectangle(
+            [x0, y, x0 + box_size, y + box_size],
+            fill=color,
+            outline="black"
+        )
+    
+        # label text
+        roi_name = roi_name.replace(".nii.gz", "").replace(".nii", "")
+        roi_name_clean = roi_name.split("_")[-1]
+        draw.text(
+            (x0 + box_size + 15, y - 2),
+            f"{roi_name_clean}",
+            fill="black",
+            font=font_text
+        )
+    
+        y += line_height
+    
+    canvas.save(out_image_labeled)
+    print(f"Saved labeled image to: {out_image_labeled}")
     
 def plot_summary_params_model(output_path, model, cfg, template_path=None, countour_path=None):
     
@@ -3709,7 +3775,7 @@ def create_ROI_mask_fromindx(atlas, atlas_labels, indx, bids_strc_reg):
     return masked_data
 
 def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr, 
-                          vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, model_path, extra=None):
+                          vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, model_path):
  
      Data      = np.zeros((len(ROI_list), len(patterns)))
      Data_all  = np.empty((len(ROI_list), len(patterns)), dtype=object)
@@ -3733,25 +3799,16 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
              mask = img.get_fdata()*tmp_GM
              masked_img = nib.Nifti1Image(mask, affine=img.affine, header=img.header)
              nib.save(masked_img, bids_strc_reg.get_path(f'mask_voxel_mrs_GM.nii.gz'))
-         elif ROI == 'lesion':
-            bids_strc_manual = bids_strc_reg
-            bids_strc_manual.set_param(datatype='manual_masks')            
-            bids_strc_manual.set_param(description='')
-            mask = nib.load(bids_strc_manual.get_path('mask_lesion.nii.gz')).get_fdata()
+         elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
+             mask = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
          else:
              mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg_tpm_thr, bids_strc_reg)
-         
-         # For micro FA for example, take the results only with low b valyes
-         if extra is not None:
-             if 'CSF' in ROI:
-                 extra.set_param(description='microFA_lowb')
-             else:
-                 extra.set_param(description='microFA')
-             model_path = extra.get_path()
-             print(f'    in {model_path}...')
 
          # Create left and right versions of the mask
-         mask_left, mask_right = split_mask_left_right(mask, bids_strc_reg, vx_middle, ROI)
+         if os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
+             mask_left, mask_right = split_mask_left_right(mask, bids_manual, vx_middle, ROI)
+         else:
+             mask_left, mask_right = split_mask_left_right(mask, bids_strc_reg, vx_middle, ROI)
          
          # Get value of parameter map
          for j, (pattern, maximum) in enumerate(zip(patterns, maximums)): 
