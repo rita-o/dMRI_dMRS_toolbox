@@ -678,14 +678,14 @@ class DMRSModel:
                         params = np.array(self.results[model][metab][diffusion_time].x)
                         params_sig = np.array(self.results[model][metab][diffusion_time].sig)
                         df = pd.DataFrame(np.hstack([params,params_sig]).reshape(2,-1), columns=[spec.param_names])
-                        df.to_csv((Path(csv_path) / f"fit_parameters_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
+                        df.to_csv((Path(csv_path) / f"fit_parameters_{metab}_{model}_diffusion_time_{diffusion_time}.csv"), index=False)
 
             else:
                 if self.results[model][metab] is not None:
                     params = np.array(self.results[model][metab].x)
                     params_sig = np.array(self.results[model][metab].sig)
                     df = pd.DataFrame(np.hstack([params,params_sig]).reshape(2,-1), columns=[spec.param_names])
-                    df.to_csv((Path(csv_path) / f"fit_parameters_{model}.csv"), index=False)
+                    df.to_csv((Path(csv_path) / f"fit_parameters_{metab}_{model}.csv"), index=False)
 
         # export model predicitons to csv
         for diffusion_time in self.dataset.diffusion_times:
