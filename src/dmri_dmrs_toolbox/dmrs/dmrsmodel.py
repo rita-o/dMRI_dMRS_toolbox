@@ -653,7 +653,7 @@ class DMRSModel:
                  (metab + "_" + model+ ".png"))
             storepath.parent.mkdir(parents=True, exist_ok=True)
 
-            plt.savefig(storepath)
+            plt.savefig(storepath,dpi=dpi)
             plt.show()
             plt.close()
 
