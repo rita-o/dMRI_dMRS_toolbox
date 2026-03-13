@@ -303,15 +303,16 @@ def Step3_preproc(cfg):
      
                 if not os.path.exists(paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')) or cfg['redo_b0_extract']:
                   
-                    # since rev is only b0, just copy the file and rename it
-                    #copy_files([paths_dwi_rev[kk]],[paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')])
-                    
-                    # extract b0
-                    extract_b0(    [paths_dwi_rev[kk]], \
-                                    [paths_dwi_rev[kk].replace('dwi.nii.gz', 'bvecs.txt')], \
-                                    [paths_dwi_rev[kk].replace('dwi.nii.gz', 'bvalsNom.txt')], \
-                                    [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')],
-                                    cfg)
+                    if len(read_numeric_txt(paths_dwi_rev[kk].replace('dwi.nii.gz', 'bvalsNom.txt'))[0])>1:
+                         # extract b0
+                         extract_b0(    [paths_dwi_rev[kk]], \
+                                         [paths_dwi_rev[kk].replace('dwi.nii.gz', 'bvecs.txt')], \
+                                         [paths_dwi_rev[kk].replace('dwi.nii.gz', 'bvalsNom.txt')], \
+                                         [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')],
+                                         cfg)
+                    else:
+                        # since rev is only b0, just copy the file and rename it
+                        copy_files([paths_dwi_rev[kk]],[paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')])
 
                     # average b0 - if its just one volume it will be the same, but it's needed if more than one volume are acquired
                     make_avg(3, [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0.nii.gz')], [paths_dwi_rev[kk].replace('dwi.nii.gz', 'b0_avg.nii.gz')],cfg)
