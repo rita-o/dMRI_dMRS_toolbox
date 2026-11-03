@@ -100,7 +100,7 @@ def Step3_registrations(cfg):
                     bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                folderlevel='derivatives', workingdir=cfg['prep_foldername'])
         
-                    if not os.path.exists(bids_strc_reg.get_path(f'{anat_format}2atlas.nii.gz')):
+                    if not os.path.exists(bids_strc_reg.get_path(f'{anat_format}2atlas.nii.gz')) or cfg['redo_registration']:
 
                         create_directory(bids_strc_reg.get_path())
                         # Copy ref file
@@ -164,7 +164,7 @@ def Step3_registrations(cfg):
                                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'])
                         bids_strc_reg_dwi.set_param(base_name='')
                        
-                        if not os.path.exists(bids_strc_reg.get_path('template_in_dwi.nii.gz')):
+                        if not os.path.exists(bids_strc_reg.get_path('template_in_dwi.nii.gz')) or cfg['redo_registration']:
                         
                             create_directory(bids_strc_reg_dwi.get_path())
                             

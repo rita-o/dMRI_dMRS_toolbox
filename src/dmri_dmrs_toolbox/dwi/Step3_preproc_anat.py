@@ -30,11 +30,13 @@ import sys
 import pandas as pd
 import math
 import subprocess
-from dmri_dmrs_toolbox.misc.custom_functions import (fsl_reorient, N4_unbias, brain_extract_BET, brain_extract_RATS, interactive_brain_mask_refine, QA_brain_extract, make_mask, copy_files, fsl_mult)
+from dmri_dmrs_toolbox.misc.custom_functions import (fsl_reorient, N4_unbias, brain_extract_BET, brain_extract_RATS, interactive_brain_mask_refine, interactive_brain_mask_refine_organoids, QA_brain_extract, make_mask, copy_files, fsl_mult, make_mask_organoid)
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.atlas_functions import make_atlas_manual_organoid, make_atlas_label_from_anat_organoid
 import matplotlib.pyplot as plt
 import shutil
+import glob
+import re
 plt.close('all')
 
 def Step3_preproc_anat(cfg):
@@ -112,7 +114,12 @@ def Step3_preproc_anat(cfg):
                         brain_extract_RATS(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),cfg)
                         
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),
+                                                                bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),
+                                                                subj_data_sess,
+                                                                cfg,
+                                                                thr_col='anat_thr',
+                                                                )
 
                     elif cfg['algo_brainextract']=='UNET':
                         # create intial brain mask
@@ -124,7 +131,12 @@ def Step3_preproc_anat(cfg):
                         subprocess.run(cmd, check=True)
                       
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),
+                                                                bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),
+                                                                subj_data_sess,
+                                                                cfg,
+                                                                thr_col='anat_thr',
+                                                                )
                         
                     
                     elif cfg['algo_brainextract']=='thr':
@@ -139,8 +151,13 @@ def Step3_preproc_anat(cfg):
                                   bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), anat_thr, cfg)
 
                         # refine mask (interactive)
-                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
-
+                        new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),
+                                                                bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),
+                                                                subj_data_sess,
+                                                                cfg,
+                                                                thr_col='anat_thr',
+                                                                )
+                        
                     print('Saving new anat threshold to the excel')
                     mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
                     scan_list.loc[mask_scan, 'anat_thr'] = new_thr
@@ -156,7 +173,7 @@ def Step3_preproc_anat(cfg):
                 
                 elif cfg['subject_type']=='organoid':
                     
-                    ## Make mask of the overall organoids -------------
+                    ## Make mask of the the flask that would be like "brain" mask -------------
                     print('\n >> Thresholding brain map for brain extraction.')
                     
                     # get initial threshold for the anatomical image
@@ -167,19 +184,45 @@ def Step3_preproc_anat(cfg):
                               bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), anat_thr, cfg)
 
                     # refine mask (interactive)
-                    new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), subj_data_sess, cfg)
-
+                    new_thr = interactive_brain_mask_refine(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),
+                                                            bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),
+                                                            subj_data_sess,
+                                                            cfg,
+                                                            thr_col='anat_thr',
+                                                            )
+                    
                     print('Saving new anat threshold to the excel')
                     mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
                     scan_list.loc[mask_scan, 'anat_thr'] = new_thr
                     scan_list.to_excel(os.path.join(data_path, cfg['scan_list_name']), index=False)
                     
-                    copy_files([bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz')],[bids_strc_anat.get_path('organoids_mask.nii.gz')])    
                     
-                    ## Make mask of the the flask that would be like "brain" mask -------------
-                    make_mask(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'), 
-                              bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'), 5000, cfg)
-                    fsl_mult(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain_mask.nii.gz'),bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),cfg)
+                    ## Make mask of the organoids -------------
+                    mask = subj_data_sess['acqType'].str.contains('T2W|T1W', case=False)
+                    value = subj_data_sess.loc[mask, 'organoid_thr'].iloc[0]
+                    thresholds = [float(v.strip()) for v in str(value).split(',')]
+                    
+                    organoid_thr_lower = thresholds[0]
+                    organoid_thr_upper = thresholds[1]
+                    
+                    make_mask_organoid(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), 
+                              bids_strc_anat.get_path('organoids_mask.nii.gz'),organoid_thr_lower, organoid_thr_upper, cfg)
+                    
+                    # refine mask (interactive)
+                    lower_thr, upper_thr = interactive_brain_mask_refine_organoids(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'),
+                                                            bids_strc_anat.get_path('organoids_mask.nii.gz'),
+                                                            subj_data_sess,
+                                                            cfg
+                                                            )
+                                                                                        
+                    
+                    print('Saving new anat threshold to the excel')
+                    mask_scan =  (scan_list['study_name'] == subj) & (scan_list['acqType'].str.contains('T2W|T1W', case=False))
+                    scan_list['organoid_thr'] = scan_list['organoid_thr'].astype(object)
+                    scan_list.loc[mask_scan, 'organoid_thr'] = f'{lower_thr}, {upper_thr}'
+                    scan_list.to_excel(
+                        os.path.join(data_path, cfg['scan_list_name']), index=False
+                    )
                     
                     # Make label of the atlas
                     make_atlas_label_from_anat_organoid(bids_strc_anat.get_path('organoids_mask.nii.gz'),
@@ -220,24 +263,32 @@ def Step3_preproc_anat(cfg):
                         "During parameter extraction, the pipeline will automatically\n"
                         "search for files named '*_organoidX_mask.nii.gz' and extract\n"
                         "estimates within each region.\n"
-                        ">> Did you create your mask? Type 'yes' or 'no':\n"
+                        "When finished, return here and press Enter to continue.\n"
+                        "To skip manual mask creation, simply press Enter now.\n"
+                        "Existing manual masks will be used automatically.\n"
                         "=================================================================\n"
                     )
 
                     
                     # apply inverse transform to put T2w in dwi space
-                    answer = input(prompt).strip().lower()
-                    if answer == 'yes':
-                        make_atlas_manual_organoid(bids_strc_anat.get_path('organoids_manual_mask.nii.gz'),
-                                                   bids_strc_anat.get_path(),
-                                                   bids_strc_anat.get_path(f"{cfg['atlas']}.label"), cfg)    
-                        print('done')  
-                    elif answer == 'no':  
-                        print("Continuing without masks.")                                      
+                    input(prompt)
+              
+                    anat_folder = bids_strc_anat.get_path()
+                    candidate_masks = glob.glob(os.path.join(anat_folder, '*organoid?_mask.nii.gz'))
+                    pattern = re.compile(r'organoid([A-Z])_mask\.nii\.gz$')
+                    organoid_masks = [f for f in candidate_masks if pattern.search(os.path.basename(f))]
+                    
+                    if organoid_masks:
+                        make_atlas_manual_organoid(
+                            bids_strc_anat.get_path('organoids_manual_mask.nii.gz'),
+                            bids_strc_anat.get_path(),
+                            bids_strc_anat.get_path(f"{cfg['atlas']}.label"),
+                            cfg,
+                        )
+                        print("Manual organoid masks processed.")
                     else:
-                        print("Aborted by user.")
-                        sys.exit("Pipeline stopped by user input.")
-                        
+                        print("No manual organoid masks found. Continuing with the automatic mask.")
     
+                        
                 # QA
                 QA_brain_extract(bids_strc_anat.get_path(f'{anat_format}_bc.nii.gz'),os.path.join(bids_strc_anat.get_path(),'QA_brain_extract'),anat_format, cfg)

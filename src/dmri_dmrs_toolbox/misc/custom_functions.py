@@ -609,6 +609,9 @@ def do_eddy(eddy_input_files, cfg):  # rita addes repol and slm linear
     if cfg['acq_wholesphere'] == 0:
         call.append('--slm=linear')
 
+    if cfg['subject_type']=='organoid':
+        call.append('--dont_peas')
+
     # If there is topup data, use it
     if eddy_input_files.get('topup'):
         topup = eddy_input_files['topup']
@@ -1937,6 +1940,24 @@ def make_mask(input_path, output_path, val, cfg):
     
     print(' '.join(call))
     os.system(' '.join(call))
+    
+def make_mask_organoid(input_path, output_path, val, val2, cfg):
+    
+    exe = os.path.join(cfg["fsl_path"], "fslmaths")
+    call = [exe,
+            f'{input_path}',
+            f'-uthr {val2} -thr {val} -bin',
+            f'{output_path}']
+
+    os.system(' '.join(call))
+    
+    # Fill in holes by creating mask
+    call = [exe,
+            f'{output_path} -fillh'  ,
+            f'{output_path}']
+    
+    print(' '.join(call))
+    os.system(' '.join(call))
 
 def fsl_reorient(input_path, cfg):
     
@@ -2965,114 +2986,129 @@ def brain_mask_refine(input_path,anat_thr, cfg):
     # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
     binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"),cfg)
 
-    
-def brain_mask_refine_organoids(input_path,anat_thr, cfg):
+def brain_mask_refine_organoids(input_path, mask_path, anat_thr_lower, anat_thr_upper, cfg):
 
-    # Use brain mask to get just the T2w brain image
-    #binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"), cfg)
-    
-    # Apply extra threshold on intensity
+    # Threshold the anatomical image and create a binary organoid mask
     exe = os.path.join(cfg["fsl_path"], "fslmaths")
-    call = [exe,
-            f'{input_path}',
-            f'-thr {anat_thr}', # 4000, 2100
-            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}']
-    
+    call = [
+        exe,
+        input_path,
+        f'-uthr {anat_thr_upper} -thr {anat_thr_lower} -bin',
+        mask_path,
+    ]
+
     print(' '.join(call))
     os.system(' '.join(call))
-    
-    exe = os.path.join(cfg["fsl_path"], "fslmaths")
-    call = [exe,
-            f'{input_path.replace(".nii.gz", "_brain.nii.gz")}',
-            f'-thr {anat_thr} -bin', # 4000, 2100
-            f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
-    
-    print(' '.join(call))
-    os.system(' '.join(call))
-    
-    # # Fill in holes by creating mask
-    # call = [exe,
-    #         f'{input_path.replace(".nii.gz", "_brain.nii.gz")} -fillh'  ,
-    #         f'{input_path.replace(".nii.gz", "_brain_mask.nii.gz")}']
-    
-    # print(' '.join(call))
-    # os.system(' '.join(call))
-    
-    # # Extra clean of mask
-    # import scipy.ndimage as ndi
 
-    # img  = nib.load(input_path.replace(".nii.gz", "_brain_mask.nii.gz"))
-    # data = img.get_fdata() > 0  # ensure bool
-    
-    # # 1) Slight erosion to break thin bridges
-    # eroded = ndi.binary_erosion(data, structure=np.ones((3,3,3)), iterations=2)
-    
-    # # 2) Keep only largest connected component
-    # labeled, n = ndi.label(eroded)
-    # if n > 0:
-    #     largest_label = np.argmax(np.bincount(labeled.flat)[1:]) + 1
-    #     largest_component = (labeled == largest_label)
-    # else:
-    #     largest_component = eroded
-    
-    # # 3) Dilate back to recover a bit of size
-    # cleaned = ndi.binary_dilation(largest_component, structure=np.ones((3,3,3)), iterations=2)
-    
-    # nib.save(
-    #     nib.Nifti1Image(cleaned.astype(np.uint8), img.affine),
-    #     input_path.replace(".nii.gz", "_brain_mask.nii.gz")
-    # )
-    
-  
-  
-    # Use new clean brain mask (there is never too many masks xD ) to get just the T2w brain image
-    #binary_op(input_path,input_path.replace(".nii.gz", "_brain_mask.nii.gz"), '-mul', input_path.replace(".nii.gz", "_brain.nii.gz"),cfg)
-
-
-def interactive_brain_mask_refine(anat_path, subj_data, cfg, thr_mask_col='acqType'):
+def interactive_brain_mask_refine(
+    anat_path, mask_path, subj_data, cfg,
+    thr_mask_col='acqType',
+    thr_col='anat_thr',
+):
     """
-    Run brain_mask_refine and interactively ask the user to accept or change the threshold.
-    Expects subj_data to have a column 'anat_thr' and an acquisition-type column (thr_mask_col).
+    Run mask refinement and ask the user to accept or change the threshold.
     """
-    # Get initial threshold for the anatomical image
+    
     mask = subj_data[thr_mask_col].str.contains('T2W|T1W', case=False)
-    anat_thr = float(subj_data.loc[mask, 'anat_thr'].iloc[0])
-    
+    anat_thr = float(subj_data.loc[mask, thr_col].iloc[0])
+
+    backup_path = mask_path.replace('.nii.gz', '_bkp.nii.gz')
+
     # Copy files in case
-    copy_files([anat_path.replace('.nii.gz','_brain_mask.nii.gz')],
-               [anat_path.replace('.nii.gz','_brain_mask_bkp.nii.gz')])
+    copy_files([mask_path], [backup_path])
 
     while True:
-        print(f"\nRunning brain_mask_refine with threshold anat_thr={anat_thr} ...")
-        
+        print(
+            f"\n------------------"
+            f"\nRefining mask '{os.path.basename(mask_path)}' "
+            f"with threshold {thr_col}={anat_thr} ... \n \n"
+        )
+
         # Get the original mask again
-        copy_files([anat_path.replace('.nii.gz','_brain_mask_bkp.nii.gz')],
-                   [anat_path.replace('.nii.gz','_brain_mask.nii.gz')])
+        copy_files([backup_path], [mask_path])
 
         # Refine
-        if cfg['subject_type']=='organoid':
-            brain_mask_refine_organoids(anat_path, anat_thr, cfg)
-        else:
-            brain_mask_refine(anat_path, anat_thr, cfg)
+        brain_mask_refine(anat_path, anat_thr, cfg)
 
-        ans = input("\n >> Check the final brain mask image (with FSLEyes eg). Is the brain mask OK? [Y/n]: ").strip().lower()
+        ans = input(
+            "\n >> Check the final mask image (with FSLeyes eg). "
+            "Is the mask OK? [Y/n]: "
+        ).strip().lower()
+
         if ans in ("", "y", "yes"):
-            # Save the final threshold back into subj_data
-            subj_data.loc[mask, 'anat_thr'] = anat_thr
-            print(f"Brain mask accepted. Final anat_thr set to {anat_thr}.")
+            subj_data.loc[mask, thr_col] = anat_thr
+            print(f"Mask accepted. Final anat_thr set to {anat_thr}.")
             break
-
-        # Ask for a new threshold
+       
         while True:
-            new_thr_str = input("Enter new threshold for brain mask: ").strip()
+            new_thr_str = input("Enter new threshold for mask: ").strip()
             try:
                 anat_thr = float(new_thr_str)
                 break
             except ValueError:
                 print("Invalid value, please enter a numeric threshold.")
-                
+        
     return anat_thr
+                
+def interactive_brain_mask_refine_organoids(
+    anat_path, mask_path, subj_data, cfg,
+    thr_mask_col='acqType',
+):
+    """Refine an organoid mask using lower and upper thresholds."""
 
+    mask = subj_data[thr_mask_col].str.contains(
+        'T2W|T1W', case=False, na=False
+    )
+    value = subj_data.loc[mask, 'organoid_thr'].iloc[0]
+    lower_thr, upper_thr = [float(v.strip()) for v in str(value).split(',')]
+
+    if lower_thr >= upper_thr:
+        raise ValueError("Lower threshold must be smaller than upper threshold.")
+
+    backup_path = mask_path.replace('.nii.gz', '_bkp.nii.gz')
+    copy_files([mask_path], [backup_path])
+
+    while True:
+        print(
+            f"\nRefining mask '{os.path.basename(mask_path)}' "
+            f"with thresholds {lower_thr}, {upper_thr}..."
+        )
+
+        # Restore the original mask
+        copy_files([backup_path], [mask_path])
+
+        brain_mask_refine_organoids(
+            anat_path, mask_path, lower_thr, upper_thr, cfg
+        )
+
+        ans = input(
+            "\n >> Check the final mask image (with FSLeyes eg). "
+            "Is the mask OK? [Y/n]: "
+        ).strip().lower()
+
+        if ans in ("", "y", "yes"):
+            subj_data['organoid_thr'] = subj_data['organoid_thr'].astype(object)    
+            subj_data.loc[mask, 'organoid_thr'] = f'{lower_thr}, {upper_thr}'
+            print(f"Mask accepted. Final thresholds: {lower_thr}, {upper_thr}.")
+            break
+
+        while True:
+            try:
+                lower_new = float(input("Enter lower threshold: ").strip())
+                upper_new = float(input("Enter upper threshold: ").strip())
+
+                if lower_new >= upper_new:
+                    raise ValueError
+
+                lower_thr, upper_thr = lower_new, upper_new
+                break
+            except ValueError:
+                print(
+                    "Enter numeric values with the lower threshold "
+                    "smaller than the upper threshold."
+                )
+
+    return lower_thr, upper_thr
 
 def brain_extract_organoids(input_path,val, cfg):
     
@@ -3156,7 +3192,43 @@ def register_outputfits_to_anat(output_path, new_output_path,model,cfg, bids_str
                                       [os.path.join(new_output_path,filename)], # output
                                       [bids_strc_prep.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 0],cfg) # transform 1
         
- 
+
+def register_outputfits_anat_to_atlas(output_path, new_output_path, model, cfg, bids_strc_reg):
+    """Transform anatomical-space model maps into the configured atlas space."""
+    from .custom_functions_models import get_param_names_model
+    from dmri_dmrs_toolbox.misc.atlas_functions import prepare_atlas
+
+    anat_format = cfg['anat_format']
+    create_directory(new_output_path)
+    patterns, _, _ = get_param_names_model(model, cfg['is_alive'])
+
+    if 'anat_space_organoids' in cfg['atlas']:
+        for filename in os.listdir(output_path):
+            if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
+                shutil.copyfile(
+                    os.path.join(output_path, filename),
+                    os.path.join(new_output_path, filename),
+                )
+        return
+     
+    _, template_path = prepare_atlas(cfg['atlas'], cfg['common_folder'],'atlas', cfg)
+
+    for filename in os.listdir(output_path):
+        if not any(fnmatch.fnmatch(filename, pattern) for pattern in patterns):
+            continue
+
+        # ANTs applies the affine first and then the forward warp.
+        ants_apply_transforms(
+                [os.path.join(output_path, filename)],  # input
+                template_path,                                                  # reference
+                [os.path.join(new_output_path, filename)], # output
+                bids_strc_reg.get_path(f'{anat_format}2atlas1Warp.nii.gz'),    # transform 1
+                bids_strc_reg.get_path(f'{anat_format}2atlas0GenericAffine.mat'), # transform 2
+                cfg
+            )
+
+
+    
 ##### NIFTI HANDLE #####
 
 

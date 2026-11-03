@@ -13,7 +13,8 @@ import fnmatch
 import math
 from dmri_dmrs_toolbox.misc.bids_structure import create_bids_structure
 from dmri_dmrs_toolbox.misc.custom_functions import (create_directory, get_file_in_folder, copy_files_BIDS,
-    multiply_by_mask, plot_summary_params_model, register_outputfits_to_anat,calculate_pwd_avg, compute_micro_FA,)
+    multiply_by_mask, plot_summary_params_model, register_outputfits_to_anat,
+    register_outputfits_anat_to_atlas, calculate_pwd_avg, compute_micro_FA,)
 from dmri_dmrs_toolbox.misc.custom_functions_models import (get_param_names_model,run_swissknife_model, run_sandi_amico,run_sandi_mp_model, run_designer_model,
 run_sandix_sj_model, prepare_model_inputs, run_dtidki_designer, get_data_used, run_uGUIDE_preparation, run_uGUIDE_model, run_xgboost_preparation)
 from dmri_dmrs_toolbox.misc.atlas_functions import prepare_atlas_labels, create_ROI_mask
@@ -115,9 +116,30 @@ def Step4_modelling(cfg):
                     # Register to anat space
                     bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
                                               folderlevel='derivatives', workingdir=cfg['prep_foldername'])
-                    register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
-                                                os.path.join(output_path,'Output_in_anat'),
-                                            'DTI_DKI',cfg, bids_strc_anat, bids_strc_prep)
+                    if ( cfg['redo_reg_outputs'] == 1  or not os.path.isdir(os.path.join(output_path,'Output_in_anat')) or not os.listdir(os.path.join(output_path,'Output_in_anat'))):
+                        register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                                    os.path.join(output_path,'Output_in_anat'),
+                                                'DTI_DKI',cfg, bids_strc_anat, bids_strc_prep)
+                    # Register to atlas space
+                    if cfg.get('atlas'):
+                        if ( cfg['redo_reg_outputs'] == 1  or not os.path.isdir(os.path.join(output_path,'Output_in_atlas')) or not os.listdir(os.path.join(output_path,'Output_in_atlas'))):
+                            bids_strc_reg = create_bids_structure(
+                                subj=subj,
+                                sess=sess,
+                                datatype='registration',
+                                description=cfg['atlas'] + '-To-' + cfg['anat_format'],
+                                root=data_path,
+                                folderlevel='derivatives',
+                                workingdir=cfg['analysis_foldername'],
+                            )
+                            bids_strc_reg.set_param(base_name='')
+                            register_outputfits_anat_to_atlas(
+                                os.path.join(output_path, 'Output_in_anat'),
+                                os.path.join(output_path, 'Output_in_atlas'),
+                                'DTI_DKI',
+                                cfg,
+                                bids_strc_reg,
+                            )
                 
                     # Plot summary plot in anat space
                     bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
@@ -224,8 +246,38 @@ def Step4_modelling(cfg):
                             
                     # Plot summary plot in dwi space
                     bids_strc_prep.set_param(description='allDelta-allb') # new: done on each Delta processed together ('allDelta')
-                    plot_summary_params_model(os.path.join(output_path, 'Output_masked'),'Micro_FA',cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
+                    plot_summary_params_model(os.path.join(output_path, 'Output_masked'),'microFA',cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
        
+        
+                    # Register to anat space
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
+                                              folderlevel='derivatives', workingdir=cfg['prep_foldername'])
+                    if ( cfg['redo_reg_outputs'] == 1  or not os.path.isdir(os.path.join(output_path,'Output_in_anat')) or not os.listdir(os.path.join(output_path,'Output_in_anat'))):
+                        register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                                    os.path.join(output_path,'Output_in_anat'),
+                                                'microFA',cfg, bids_strc_anat, bids_strc_prep)
+                    # Register to atlas space
+                    if cfg.get('atlas'):
+                        if ( cfg['redo_reg_outputs'] == 1 or not os.path.isdir(os.path.join(output_path,'Output_in_atlas')) or not os.listdir(os.path.join(output_path,'Output_in_atlas'))):
+                            bids_strc_reg = create_bids_structure(
+                                subj=subj,
+                                sess=sess,
+                                datatype='registration',
+                                description=cfg['atlas'] + '-To-' + cfg['anat_format'],
+                                root=data_path,
+                                folderlevel='derivatives',
+                                workingdir=cfg['analysis_foldername'],
+                            )
+                            bids_strc_reg.set_param(base_name='')
+                            register_outputfits_anat_to_atlas(
+                                os.path.join(output_path, 'Output_in_anat'),
+                                os.path.join(output_path, 'Output_in_atlas'),
+                                'microFA',
+                                cfg,
+                                bids_strc_reg,
+                            )
+                    
+                            
             ########################## MODEL-WISE OPERATIONS ##########################       
             for model in cfg['model_list']:
                 
@@ -290,12 +342,33 @@ def Step4_modelling(cfg):
                 plot_summary_params_model(os.path.join(output_path,'Output_masked'), model, cfg, bids_strc_prep.get_path('b0_dn_gc_ec_avg_bc_brain.nii.gz'))
                 
                 # Register to anat space
-                bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
-                                          folderlevel='derivatives', workingdir=cfg['prep_foldername'])                
-                register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
-                                            os.path.join(output_path,'Output_in_anat'),
-                                            model,cfg, bids_strc_anat, bids_strc_prep)
-                
+                if ( cfg['redo_reg_outputs'] == 1  or not os.path.isdir(os.path.join(output_path,'Output_in_anat')) or not os.listdir(os.path.join(output_path,'Output_in_anat'))):
+                    bids_strc_anat = create_bids_structure(subj=subj, sess=sess, datatype="anat", root=data_path, 
+                                              folderlevel='derivatives', workingdir=cfg['prep_foldername'])                
+                    register_outputfits_to_anat(os.path.join(output_path,'Output_masked'),
+                                                os.path.join(output_path,'Output_in_anat'),
+                                                model,cfg, bids_strc_anat, bids_strc_prep)
+                # Register to atlas space
+                if cfg.get('atlas'):
+                   if ( cfg['redo_reg_outputs'] == 1  or not os.path.isdir(os.path.join(output_path,'Output_in_atlas')) or not os.listdir(os.path.join(output_path,'Output_in_atlas'))):
+                        bids_strc_reg = create_bids_structure(
+                            subj=subj,
+                            sess=sess,
+                            datatype='registration',
+                            description=cfg['atlas'] + '-To-' + cfg['anat_format'],
+                            root=data_path,
+                            folderlevel='derivatives',
+                            workingdir=cfg['analysis_foldername'],
+                        )
+                        bids_strc_reg.set_param(base_name='')
+                        register_outputfits_anat_to_atlas(
+                            os.path.join(output_path, 'Output_in_anat'),
+                            os.path.join(output_path, 'Output_in_atlas'),
+                            model,
+                            cfg,
+                            bids_strc_reg,
+                        )
+                    
                 # Plot summary plot in anat space
                 if cfg['subject_type']=='organoid':
                          bids_strc_reg  = create_bids_structure(subj=subj, sess=sess, datatype='registration', description=cfg['atlas']  +'-To-'+cfg['anat_format'], root=data_path, 
@@ -312,5 +385,3 @@ def Step4_modelling(cfg):
            
             
             
-
-

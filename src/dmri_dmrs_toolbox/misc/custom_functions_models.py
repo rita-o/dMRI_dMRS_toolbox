@@ -95,7 +95,7 @@ def get_param_names_model(model, is_alive):
             #maximums[:, 0] = -np.inf 
             maximums = np.array([[0, 3], [0, 3], [0, 1]])
             
-    elif model=='Micro_FA':
+    elif model=='microFA':
             patterns = ["*microFA*", "*MD*", "*MKiso*", "*MKaniso*", "*Uiso*", "*Uaniso*"]
             lims = [(0, 1), (0, 3),(0, 3),(0, 3),(0, 2),(0, 3)]
             maximums = np.array([[0, 1], [0, 3],[0, 3],[0, 3],[0, 2],[0, 3]])

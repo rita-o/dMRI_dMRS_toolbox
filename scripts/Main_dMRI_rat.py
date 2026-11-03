@@ -97,6 +97,7 @@ cfg['redo_gibbs']           = 0   # If you want to redo the processing from the 
 cfg['redo_topup']           = 0   # If you want to redo the processing from the topup correction set to 1
 cfg['redo_eddy']            = 0   # If you want to redo the processing from the eddy correction set to 1
 cfg['redo_final_mask']      = 0   # If you want to redo the processing from the creation of the final brain masks set to 1
+cfg['redo_registration']    = 0   # If you want to redo the processing from the last mask registration step
 
 cfg['algo_denoising']       = 'mrtrix_MPPCA'         # Options are: 'matlab_MPPCA', or 'matlab_tMPPCA_4D' or 'matlab_tMPPCA_5D' or 'mrtrix_MPPCA' or 'designer_tMPPCA'. Note that designer sigma output map is not caculated the same as for the other methods
 cfg['algo_brainextract']    = 'UNET'            # Options are: 'UNET' or 'RATS' or 'thr'. Used for skull stripping in animals. 
@@ -112,6 +113,7 @@ cfg['model_list_GM']        =  ['Nexi','Sandi']         # List of model names to
 cfg['model_list_WM']        =  []               # List of model names to use for fitting the WM signal
 cfg['LTEDelta_for_microFA'] =  38               # Diffusion time (in ms) from the LTE (linear tensor encoding) acquisition that needs to be used together with STE (spherical tensor encoding) data to compute microFA
 cfg['redo_modelling']       =  0                # If you want to redo the modelling set to 1, otherwise will redo just the models that didnt do before (because it crashed or something)
+cfg['redo_reg_outputs']     =  0 
 
 #### ROIS CONFIG ####
 cfg['ROIs_GM']       = ['Isocortex','Substantia_Nigra','Cerebellum','Pallidum','Hypothalamus','Hippocampal_Formation'] # List of ROIs to analyse (in GM). Defined previously for each atlas in atlas_functions. Keep empty [] if desired.

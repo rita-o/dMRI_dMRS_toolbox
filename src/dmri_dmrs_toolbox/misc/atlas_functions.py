@@ -722,7 +722,7 @@ def make_atlas_label_from_anat_organoid(organoid_mask,folder,label_path, cfg):
     #     f.write("\n")
     #     f.writelines(label_line)        
     
-def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
+def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, outpath):
  
      # Define tpms and threshold at 0.9
      atlas_shape = nib.load(atlas).shape
@@ -742,8 +742,14 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
 
      if 'Atlas_WHS_v4' in atlas:
          # Define ROI labels for each ROI asked
-         roi_definitions = {
-            'hippocampus': ['hippocampus','Cornu ammonis 3','Cornu ammonis 2','Cornu ammonis 1','Dentate gyrus'],
+          roi_definitions = {
+            'hippocampus': [
+                'hippocampus',
+                'Cornu ammonis 3',
+                'Cornu ammonis 2',
+                'Cornu ammonis 1',
+                'Dentate gyrus'
+            ],
             'M1': ['Primary motor area'],
             'M2': ['Secondary motor area'],
             'S1': ['Primary somatosensory'],
@@ -752,30 +758,58 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
             'V2': ['Secondary visual'],
             'Parietal': ['Parietal'],
             'CC': ['corpus callosum'],
-            'Amygdala': ['Amygdaloid'],
-            'AC': ['commissure'],
+            'Amygdala': ['Amygdaloid', 'Amygdala'],
+            'AC': ['anterior commissure'],
             'Auditory': ['auditory'],
-            'Cingulate': ['Cingulate','Prelimbic'],
+            'Cingulate': ['Cingulate'],
+            'Prelimbic': ['Prelimbic'],
             'Cochlea': ['Cochlea'],
             'Entorhinal': ['entorhinal'],
-            'Caudade_Putamen':['Ventral striatal region','Caudate putamen'],
+        
+            'Caudate_Putamen': ['Caudate putamen'],
+            'Ventral_striatum': ['Ventral striatal region'],
+            'Nucleus accumbens': ['Nucleus accumbens'],
+        
             'GP': ['Globus_Pallidus'],
-            'Pallidum': ['Ventral pallidum','Bed nucleus of the stria terminalis'],
+            'VP': ['Ventral pallidum'],
+            'BNST': ['Bed nucleus of the stria terminalis'],
+        
             'SN': ['Substantia nigra'],
-            'Hypothalamus': ['Hypothalamic','Zona incerta, dorsal part','Zona incerta, ventral part','Zona incerta, caudal part'],
-            'Inferior colliculus': ['Inferior colliculus, external cortex','Inferior colliculus, dorsal cortex','Inferior colliculus, central nucleus'],
-            'Superior_colliculus': ['superior colliculus'],
-            'MGN': ['medial geniculate body, ventral','medial geniculate body, dorsal'],
-            'Nucleus accumbens':['Nucleus accumbens'],
-            'Thal': ['thalamic nucleus', 'Pineal gland','pretectothalamic lamina','Pregeniculate nucleus','thalamic nuclear'],
-            'CSF': ['Ventricular'],
-            'Cereb GM': ['erebellum','cerebellar'],
-            'Cereb WM': ['erebellum','cerebellar'],
-            'Cerebellum': ['erebellum','cerebellar'],
-            'insula': ['insula'],
             'VTA': ['Ventral tegmental area'],
+        
+            'Hypothalamus': ['Hypothalamic'],
+            'Zona_incerta': [
+                'Zona incerta, dorsal part',
+                'Zona incerta, ventral part',
+                'Zona incerta, caudal part'
+            ],
+        
+            'Inferior colliculus': [
+                'Inferior colliculus, external cortex',
+                'Inferior colliculus, dorsal cortex',
+                'Inferior colliculus, central nucleus'
+            ],
+            'Superior_colliculus': ['superior colliculus'],
+            'MGN': [
+                'medial geniculate body, ventral',
+                'medial geniculate body, dorsal',
+                'medial geniculate body, medial'
+            ],
+        
+            'Thal': [
+                'thalamic nucleus',
+                'Pregeniculate nucleus',
+                'thalamic nuclear'
+            ],
+            'Pineal': ['Pineal gland'],
+        
+            'CSF': ['Ventricular'],
+            'Cerebellum': ['erebellum', 'cerebellar'],
+            'Cereb GM': ['erebellum', 'cerebellar'],
+            'Cereb WM': ['erebellum', 'cerebellar'],
+            'insula': ['insula'],
             'WB': ['whole brain']
-        } 
+        }
      elif 'Atlas_Juelich' in atlas:
         
          roi_definitions = {
@@ -885,7 +919,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
     
      # Save the mask
      masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
-     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+     nib.save(masked_img, os.path.join(outpath,f'mask_{ROI}.nii.gz'))
     
      # Multiply by tissue probability map
      if ROI=='CC': # is WM
@@ -898,12 +932,12 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, bids_strc_reg):
          masked_data = masked_data*tmp_WM 
      elif ROI=='WB':
          masked_data = masked_data* (tmp_GM | tmp_WM | tmp_CSF)
-     else:
+     elif ROI != 'Cerebellum':
          masked_data = masked_data*tmp_GM
 
      # Save the mask
      masked_img = nib.Nifti1Image(masked_data, affine=template.affine, header=template.header)
-     nib.save(masked_img, bids_strc_reg.get_path(f'mask_{ROI}.nii.gz'))
+     nib.save(masked_img, os.path.join(outpath,f'mask_{ROI}.nii.gz'))
 
 
      return masked_data

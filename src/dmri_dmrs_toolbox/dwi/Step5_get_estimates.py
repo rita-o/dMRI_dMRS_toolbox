@@ -155,7 +155,7 @@ def Step5_get_estimates(cfg):
                     
                     # Initialize variables
                     patterns, lims, maximums = get_param_names_model(model,cfg['is_alive'])
-                    if model != 'DTI_DKI' and  model != 'Micro_FA':
+                    if model != 'DTI_DKI' and  model != 'microFA':
                         model_clean  = model.split('_')[0]
                     cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub(model_clean, '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
                    
@@ -236,14 +236,16 @@ def Step5_get_estimates(cfg):
 
                     ######## PLOT SNR ########
 
-                    if model == 'Nexi':
+                    if  'Nexi' in model:
                         print(f'Plotting powder average signal within ROIs...')
 
                         # Load data
-                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
-                        S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
-                        nf = nib.load(os.path.join(bids_strc_analysis.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
-                        WB_mask = nib.load(os.path.join(bids_strc_analysis.get_path(),'updated_mask.nii.gz')).get_fdata()
+                        bids_strc_analysis_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description='Nexi')
+                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis_temp.get_path(),'powderaverage.bval'))
+                        S_S0  = nib.load(os.path.join(bids_strc_analysis_temp.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+                        nf = nib.load(os.path.join(bids_strc_analysis_temp.get_path(),'normalized_sigma.nii.gz')).get_fdata()*np.sqrt(np.pi/2)
+                        WB_mask = nib.load(os.path.join(bids_strc_analysis_temp.get_path(),'updated_mask.nii.gz')).get_fdata()
                         
                         # organize
                         bvals_split = np.split(bvals[0], len(Delta_list))
@@ -276,7 +278,7 @@ def Step5_get_estimates(cfg):
                             elif ROI =='WB_mask':
                                 mask_indexes = WB_mask>0
                             else:
-                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg.get_path())
                             
                             S_S0_masked = copy.deepcopy(S_S0)
                             for v in range(S_S0_masked.shape[-1]):
@@ -339,9 +341,11 @@ def Step5_get_estimates(cfg):
                         print(f'Plotting powder average signal within ROIs against 1/sqrt(b)...')
 
                         # Load data
-                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis.get_path(),'powderaverage.bval'))
-                        S_S0  = nib.load(os.path.join(bids_strc_analysis.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
-                        WB_mask = nib.load(os.path.join(bids_strc_analysis.get_path(),'updated_mask.nii.gz')).get_fdata()
+                        bids_strc_analysis_temp = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path, 
+                                     folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description='Nexi')
+                        bvals = read_numeric_txt(os.path.join(bids_strc_analysis_temp.get_path(),'powderaverage.bval'))
+                        S_S0  = nib.load(os.path.join(bids_strc_analysis_temp.get_path(),'powderaverage_dwi.nii.gz')).get_fdata()
+                        WB_mask = nib.load(os.path.join(bids_strc_analysis_temp.get_path(),'updated_mask.nii.gz')).get_fdata()
 
                         # organize
                         bvals_split = np.split(bvals[0], len(Delta_list))
@@ -374,7 +378,7 @@ def Step5_get_estimates(cfg):
                             elif ROI =='WB_mask':
                                 mask_indexes = WB_mask>0
                             else:
-                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                                mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg.get_path())
     
                             S_S0_masked = copy.deepcopy(S_S0)
                             for v in range(S_S0_masked.shape[-1]):
@@ -470,6 +474,10 @@ def Step5_get_estimates(cfg):
             else:
                 TPMs = []
                 
+            bids_manual = create_bids_structure(subj=subj, sess=sess, datatype='', root=data_path,
+                    folderlevel='derivatives', workingdir='manual_masks')
+            bids_manual.set_param(description='')
+                                 
             delta_used = Delta_list[0]
             bids_strc_analysis = create_bids_structure(subj=subj, sess=sess, datatype='dwi', root=data_path,
                 folderlevel='derivatives', workingdir=cfg['analysis_foldername'], description=f'pwd_avg_Delta_{delta_used}')
@@ -507,7 +515,7 @@ def Step5_get_estimates(cfg):
                 elif ROI =='WB_mask':
                     mask_indexes = WB_mask>0
                 else:
-                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg)
+                    mask_indexes = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg['tpm_thr'], bids_strc_reg.get_path())
                 
                 S_S0_masked = copy.deepcopy(S_S0)
                 for v in range(S_S0_masked.shape[-1]):
@@ -661,7 +669,7 @@ def Step5_get_estimates(cfg):
                     np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
                 
             # Plot results
-            if os.path.exists(atlas) and os.path.exists(output_path):
+            if ROI_list:
                 
                 # Start figure
                 fig, ax = plt.subplots(3, 3, figsize=(9, 6))
@@ -789,7 +797,7 @@ def Step5_get_estimates(cfg):
             # Define atlas
             atlas = bids_strc_reg.get_path('atlas_in_dwi.nii.gz')
 
-            if os.path.exists(atlas) and os.path.exists(bids_STE.get_path()):
+            if os.path.exists(output_path):
                 print(f'Getting model estimates from Micro FA...')
 
                 # Define atlas labels 
@@ -831,39 +839,38 @@ def Step5_get_estimates(cfg):
                 
                 # Determine output file
                 bids_STE.set_param(datatype='dwi')
-                outfile = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_Micro_FA.xlsx")
-                outfile2 = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_Micro_FA.npy")
+                outfile = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_microFA.xlsx")
+                outfile2 = os.path.join(os.path.dirname(os.path.join(bids_STE.get_path())), f"output_ROIs_{cfg['atlas']}_microFA.npy")
 
                 # Option 1. Extract estimates with user defined ROIs
-                patterns, lims, maximums = get_param_names_model('Micro_FA',cfg['is_alive'])
-                cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub('Micro_FA', '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
+                patterns, lims, maximums = get_param_names_model('microFA',cfg['is_alive'])
+                cleaned_patterns = [re.sub(r'\*{2,}', '*', re.sub('microFA', '', p, flags=re.IGNORECASE).replace('[^s]', '')).strip('*') for p in patterns]          
                 
-                if os.path.exists(atlas) and os.path.exists(output_path):
                     
-                    # Get values of parameters inside the ROIs        
-                    Data, Data_all, Data_l, Data_r = get_values_within_ROI(
-                        ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
-                        vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
-                    
-                    # Save summary of means in excel format
-                    df_data = []
-                    df_data = pd.DataFrame(Data, columns=cleaned_patterns)
-                    df_data.insert(0, 'ROI Name', ROI_list)
-                    df_data.to_excel(outfile, index=False)
-                    
-                    # Save all data in npy format
-                    df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
-                    df_data_all.insert(0, 'ROI Name', ROI_list)
-                    np.save(outfile2, df_data_all)
-                    
-                    if cfg['lat_ROIS']==1:
-                        df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
-                        df_data_l.insert(0, 'ROI Name', ROI_list)
-                        np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
-                                
-                        df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
-                        df_data_r.insert(0, 'ROI Name', ROI_list)
-                        np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
+                # Get values of parameters inside the ROIs        
+                Data, Data_all, Data_l, Data_r = get_values_within_ROI(
+                    ROI_list, atlas, atlas_labels, TPMs, cfg['tpm_thr'], 
+                    vx_middle, patterns, maximums, bids_strc_reg, bids_mrs, bids_manual, output_path)
+                
+                # Save summary of means in excel format
+                df_data = []
+                df_data = pd.DataFrame(Data, columns=cleaned_patterns)
+                df_data.insert(0, 'ROI Name', ROI_list)
+                df_data.to_excel(outfile, index=False)
+                
+                # Save all data in npy format
+                df_data_all = pd.DataFrame(Data_all, columns=cleaned_patterns)
+                df_data_all.insert(0, 'ROI Name', ROI_list)
+                np.save(outfile2, df_data_all)
+                
+                if cfg['lat_ROIS']==1:
+                    df_data_l = pd.DataFrame(Data_l, columns=cleaned_patterns)
+                    df_data_l.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_left.npy'), df_data_l)
+                            
+                    df_data_r = pd.DataFrame(Data_r, columns=cleaned_patterns)
+                    df_data_r.insert(0, 'ROI Name', ROI_list)
+                    np.save(outfile2.replace('.npy','_right.npy'), df_data_r)
                 
             ######## MAKE ROI MAP ########
             if cfg['ROIs_GM'] + cfg['ROIs_WM']:

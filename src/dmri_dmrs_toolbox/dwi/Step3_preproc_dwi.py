@@ -547,27 +547,27 @@ def Step3_preproc_dwi(cfg):
                         
                         # > Option A: register mask again
                         # register dwi --> T2w
-                        antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
-                                bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
-                                bids_strc.get_path(f'dwiafterpreproc2{anat_format}'), cfg)
+                        # antsreg_simple(bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz'), # fixed
+                        #         bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'),  # moving
+                        #         bids_strc.get_path(f'dwiafterpreproc2{anat_format}'), cfg)
                         
-                        # apply inverse transform to put T2w in dwi space
-                        ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
-                                              bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
-                                              [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
-                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg) # transform 1
+                        # # apply inverse transform to put T2w in dwi space
+                        # ants_apply_transforms_simple([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                        #                       bids_strc.get_path('b0_dn_gc_ec_avg_bc_brain_before_preproc.nii.gz'), # moving
+                        #                       [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz')], # output
+                        #                       [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg) # transform 1
                         
         
-                        # apply inverse transform to put T2w in dwi space but keep the grid of T2
-                        ants_apply_transforms_keep_input_grid([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
-                                              [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_T2res.nii.gz')], # output
-                                              [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg, extra =  ["-n", "LanczosWindowedSinc"]) # transform 1
+                        # # apply inverse transform to put T2w in dwi space but keep the grid of T2
+                        # ants_apply_transforms_keep_input_grid([bids_strc_anat.get_path(f'{anat_format}_bc_brain.nii.gz')],  # input 
+                        #                       [bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_T2res.nii.gz')], # output
+                        #                       [bids_strc.get_path(f'dwiafterpreproc2{anat_format}0GenericAffine.mat'), 1],cfg, extra =  ["-n", "LanczosWindowedSinc"]) # transform 1
                           
                         # > Option B: Use previous mask
-                        #copy_files([bids_strc.get_path('mask_before_preproc.nii.gz')],[bids_strc.get_path('mask.nii.gz')])
+                        copy_files([bids_strc.get_path('mask_before_preproc.nii.gz')],[bids_strc.get_path('mask.nii.gz')])
 
                     # make mask
-                    make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0, cfg)                
+                    #make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0, cfg)                
                                 #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
                     
                     dilate_im(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask_dil.nii.gz'), '1',cfg)
