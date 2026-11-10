@@ -4016,8 +4016,9 @@ def get_values_within_ROI(ROI_list, atlas, atlas_labels, TPMs, cfg_tpm_thr,
              nib.save(masked_img, bids_strc_reg.get_path(f'mask_voxel_mrs_GM.nii.gz'))
          elif os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):
              mask = nib.load(bids_manual.get_path(f'mask_{ROI}.nii.gz')).get_fdata()
+             print(f"...on mask {bids_manual.get_path(f'mask_{ROI}.nii.gz')}")
          else:
-             mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg_tpm_thr, bids_strc_reg)
+             mask = create_ROI_mask(atlas, atlas_labels, TPMs, ROI, cfg_tpm_thr, bids_strc_reg.get_path())
 
          # Create left and right versions of the mask
          if os.path.exists(bids_manual.get_path(f'mask_{ROI}.nii.gz')):

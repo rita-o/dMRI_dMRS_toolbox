@@ -89,7 +89,10 @@ def Step3_registrations(cfg):
                         bids = create_bids_structure(subj=subj, sess=sess, datatype='anat', root=data_path, 
                                                    folderlevel='derivatives', workingdir=cfg['prep_foldername'])
                         template = bids.get_path(f'{anat_format}_bc_brain.nii.gz')
-                        atlas = bids.get_path('organoids_atlas.nii.gz')
+                        if 'organoids' in cfg['ROIs_GM']:
+                            atlas = bids.get_path('organoids_atlas.nii.gz')
+                        elif 'organoids_manual' in cfg['ROIs_GM']:
+                            atlas = bids.get_path('organoids_manual_atlas.nii.gz')
 
                     ########################## 2. REGISTRATION ATLAS TO ANAT ##########################
     

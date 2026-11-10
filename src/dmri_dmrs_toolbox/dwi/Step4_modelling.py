@@ -148,7 +148,7 @@ def Step4_modelling(cfg):
                     if cfg['subject_type']=='organoid' and os.path.exists(bids_strc_reg.get_path('mask_organoids.nii.gz')):
                              atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
                              atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
-                             mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
+                             mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg.get_path())
                              plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), 'DTI_DKI', cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"), bids_strc_reg.get_path('mask_organoids.nii.gz'))
     
                     else:
@@ -376,7 +376,7 @@ def Step4_modelling(cfg):
                          bids_strc_reg.set_param(base_name='')
                          atlas=bids_strc_reg.get_path(f"atlas_in_{cfg['anat_format']}.nii.gz")
                          atlas_labels = prepare_atlas_labels(cfg['atlas'], glob.glob(os.path.join(bids_strc_anat.get_path(), '*label*'))[0])
-                         mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg)
+                         mask = create_ROI_mask(atlas, atlas_labels, [], 'organoids', cfg['tpm_thr'], bids_strc_reg.get_path())
                          plot_summary_params_model(os.path.join(output_path,'Output_in_anat'), model, cfg, bids_strc_anat.get_path(f"{cfg['anat_format']}_bc_brain.nii.gz"), bids_strc_reg.get_path('mask_organoids.nii.gz'))
 
                 else:

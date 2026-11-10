@@ -100,6 +100,7 @@ def Step6_group_comparison(cfg):
                         filename
                         for filename in os.listdir(source_path)
                         if any(fnmatch.fnmatch(filename, pattern) for pattern in patterns)
+                        and "initialization" not in filename.lower()
                     )
                     for filename in filenames:
                         print(f'For {subj}: using {filename}')

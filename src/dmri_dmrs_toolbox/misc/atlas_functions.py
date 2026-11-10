@@ -887,6 +887,7 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, outpath):
          
           roi_definitions = {
              'organoids': ['organoid'],
+             'organoids_manual': ['organoid'],
              'medium': ['medium'],
 
          } 

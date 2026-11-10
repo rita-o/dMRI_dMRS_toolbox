@@ -49,7 +49,7 @@ def get_param_names_model(model, is_alive):
         else:
             patterns = ["*smex*t_ex*", "*smex*di*","*smex*de*","*smex*f*"]
             lims     = [(0, 80), (0, 3.5), (0, 2),  (0, 0.85)]
-            maximums = np.array([[1, 80], [0.1, 3.5], [0.1, 3.5], [0.1, 0.9]])
+            maximums = np.array([[1, 150], (0.0, 2), (0.0, 2), [0, 0.9]])
     
     elif model=='Sandi':
         if is_alive=='ex_vivo':
@@ -711,7 +711,7 @@ def run_uGUIDE_preparation(data_path, cfg, cfg_uGUIDE, scan_list):
         uGUIDE_nshells = np.hstack(uGUIDE_nshells).ravel()
         uGUIDE_Delta = np.hstack(uGUIDE_Delta).ravel()
 
-        _, adjust_parameter_limits, _ = get_param_names_model(model,cfg['is_alive'])
+        _, _, adjust_parameter_limits = get_param_names_model(model,cfg['is_alive'])
         
         # Run Simulation of data
         env_name = "SwissKnife"
@@ -750,7 +750,7 @@ simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files, ma
                 json.dumps(uGUIDE_small_delta),
                 json.dumps(sigma_files),
                 json.dumps(mask_files),
-                json.dumps(adjust_parameter_limits),
+                json.dumps(adjust_parameter_limits.tolist()),
                 json.dumps(model),
             ],
             check=True,

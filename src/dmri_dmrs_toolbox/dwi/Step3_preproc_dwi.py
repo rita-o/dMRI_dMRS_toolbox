@@ -542,7 +542,8 @@ def Step3_preproc_dwi(cfg):
                          unpad_image(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'))
                          unpad_image(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_ldk.nii.gz'), bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc_ldk.nii.gz'))
                          unpad_image(bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'), bids_strc.get_path(f'dwiafterpreproc2{anat_format}.nii.gz'))
-
+                         make_mask(bids_strc.get_path(f'{anat_format}_brain_in_dwiafterpreproc.nii.gz'), bids_strc.get_path('mask.nii.gz'), 0, cfg)                
+                         #filter_clusters_by_size(bids_strc.get_path('mask.nii.gz'), bids_strc.get_path('mask.nii.gz'), 200)
                     else:
                         
                         # > Option A: register mask again

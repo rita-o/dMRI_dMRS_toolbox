@@ -227,7 +227,7 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
     
             #Dmin, Dmax = 0.1, 3.5
             Di_idx = param_name.index('Di')
-            Dmin, Dmax = limits[Di_idx]
+            Di_min, Di_max = limits[Di_idx]
 
             Di_samples = np.zeros(n_voxels)
             De_samples = np.zeros(n_voxels)
@@ -238,8 +238,8 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
                 u0 = np.random.rand()
                 u1 = np.random.rand()
     
-                Di = Dmin + np.sqrt((Dmax - Dmin) ** 2 * u0)
-                De = Dmin + (Di - Dmin) * u1
+                Di = Di_min + np.sqrt((Di_max - Di_min) ** 2 * u0)
+                De = Di_min + (Di - Di_min) * u1
     
                 Di_samples[i] = Di
                 De_samples[i] = De
@@ -312,8 +312,8 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
                 explanation=(
                     "U0 and U1 are the random uniform variables used to generate "
                     "Di and De using the formula: "
-                    "Di = Dmin + sqrt((Dmax - Dmin)**2 * U0) and "
-                    "De = Dmin + (Di - Dmin) * U1"
+                    "Di = Di_min + sqrt((Di_max - Di_min)**2 * U0) and "
+                    "De = Di_min + (Di - Di_min) * U1"
                 ),
             )
     
@@ -340,7 +340,7 @@ def simulate_data(main_folder, b, delta, nb_directions, small_delta, sigma_files
                     explanation=(
                         "U0 and U1 are the random uniform variables used to generate "
                         "Di and De using the formula: "
-                        "Di = Dmin + sqrt((Dmax - Dmin)**2 * U0) and "
-                        "De = Dmin + (Di - Dmin) * U1"
+                        "Di = Di_min + sqrt((Di_max - Di_min)**2 * U0) and "
+                        "De = Di_min + (Di - Di_min) * U1"
                     ),
                 )

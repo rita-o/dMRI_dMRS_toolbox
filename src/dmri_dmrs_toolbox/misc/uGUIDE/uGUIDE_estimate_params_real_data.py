@@ -35,14 +35,9 @@ def postprocess_NEXI_SANDIX(samples, config, adjust_parameter_limits=None):
     u1 = np.clip(u1, 0, 1)
 
     Di_min, Di_max = config["prior_postprocessing"]["Di"]
-    De_min, _ = config["prior_postprocessing"]["De"]
-    
-    # Di_min = 0.1
-    # Di_max = 2 #3.5
-    # De_min = 0.1
 
     Di = np.sqrt((Di_max - Di_min) ** 2 * u0) + Di_min
-    De = (Di - Di_min) * u1 + De_min
+    De = Di_min + (Di - Di_min) * u1
 
     out_samples = samples.copy()
     out_samples[:, idx_u0] = Di

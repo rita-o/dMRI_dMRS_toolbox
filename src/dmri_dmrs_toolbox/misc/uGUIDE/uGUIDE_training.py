@@ -33,12 +33,10 @@ def postprocess_NEXI_SANDIX(samples, config):
     u0 = np.clip(u0, 0, 1)
     u1 = np.clip(u1, 0, 1)
 
-    Di_min = 0.1
-    Di_max = 3.5
-    De_min = 0.1
+    Di_min, Di_max = config["prior_postprocessing"]["Di"]
 
     Di = np.sqrt((Di_max - Di_min) ** 2 * u0) + Di_min
-    De = (Di - Di_min) * u1 + De_min
+    De = Di_min + (Di - Di_min) * u1
 
     out_samples = samples.copy()
     out_samples[:, idx_u0] = Di
@@ -198,7 +196,7 @@ def model_training(main_folder, model="Nexi", noise="rician", hidden_layers=[50,
     
     prior_uniform_lim = prior_postproc_lim.copy()
     # prior_uniform_lim[1] = [0.0, 9 / (3.5) ** 2]
-    prior_uniform_lim[1] = [0.0, 1.0]  # rita: allows Di up to 3.5
+    prior_uniform_lim[1] = [0.0, 1.0]
     prior_uniform_lim[2] = [0.0, 1.0]
     
     prior_uniform = {
