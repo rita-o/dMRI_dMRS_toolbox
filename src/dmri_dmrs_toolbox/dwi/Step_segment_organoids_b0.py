@@ -87,6 +87,7 @@ def Step_segment_organoids_b0(cfg):
             output_folder = os.path.join(data_path, "derivatives", "manual_masks", f"{subj}", f"{session_id}")
             create_directory(output_folder)
             output_path = os.path.join(output_folder,f"{subj}_{session_id}_mask_organoids_b0.nii.gz")
+            medium_path = os.path.join(output_folder,f"{subj}_{session_id}_mask_medium_b0.nii.gz")
 
             bids_strc = create_bids_structure(
                 subj=subj, sess=sess, datatype="dwi", root=str(data_path),
@@ -126,9 +127,12 @@ def Step_segment_organoids_b0(cfg):
                 
             n_top = 5
             occupied = np.flatnonzero(flask.any(axis=(0, 1)))
-     
-            if n_top:
-                interior[:, :, occupied[-n_top:]] = False
+            upper_interior = np.zeros_like(interior)
+            
+            if n_top > 0 and occupied.size > n_top:
+                top_slices = occupied[-n_top:]
+                upper_interior[:, :, top_slices] = interior[:, :, top_slices]
+                interior[:, :, top_slices] = False
          
             baseline = masked_smooth(data, flask, background_mm / spacing)
             signal = masked_smooth(data, flask, smooth_mm / spacing)
@@ -184,8 +188,24 @@ def Step_segment_organoids_b0(cfg):
             filename = os.path.basename(b0)
             copy_file([b0],  [os.path.join(output_folder,filename)])
             print(f"Mask saved in: {output_path}")
-                           
             
+            medium_mask = (
+                upper_interior
+                & (data > 0)
+                & ~void_neighbourhood
+                & (np.abs(contrast_map) < threshold)
+            )
+            
+            if medium_mask.any():
+                medium_img = nib.Nifti1Image(
+                    medium_mask.astype(np.uint8), result.affine, result.header.copy()
+                )
+                nib.save(medium_img, medium_path)
+                print(f"Medium mask saved in: {medium_path}")
+            else:
+                print("No voxels passed the medium mask criteria.")
+                                       
+                        
 
 
 

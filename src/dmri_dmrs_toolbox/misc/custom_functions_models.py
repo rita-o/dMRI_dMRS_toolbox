@@ -83,17 +83,17 @@ def get_param_names_model(model, is_alive):
 
     elif model=='DTI_DKI':
         if is_alive=='ex_vivo':
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0, 1), (0, 2), (0, 1)]
+            patterns = ['*md_dki*','*mk_dki*','*fa_dki*','*md_dti*']
+            lims = [(0, 1), (0, 2), (0, 1),(0, 1)]
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
-            maximums = np.array([[0, 5], [0, 50], [0, 50]])
+            maximums = np.array([[0, 5], [0, 50], [0, 50],[0, 5]])
         else:
-            patterns = ['*md_dki*','*mk_dki*','*fa_dki*']
-            lims = [(0, 2), (0, 2), (0, 1)]
+            patterns = ['*md_dki*','*mk_dki*','*fa_dki*','*md_dti*']
+            lims = [(0, 2), (0, 2), (0, 1),(0, 2)]
             #maximums = np.full((len(patterns), 2), np.inf)
             #maximums[:, 0] = -np.inf 
-            maximums = np.array([[0, 3], [0, 3], [0, 1]])
+            maximums = np.array([[0, 3], [0, 3], [0, 1],[0, 3]])
             
     elif model=='microFA':
             patterns = ["*microFA*", "*MD*", "*MKiso*", "*MKaniso*", "*Uiso*", "*Uaniso*"]
