@@ -863,6 +863,8 @@ def create_ROI_mask(atlas, atlas_labels, TPMs, ROI, tpm_thr, outpath):
            'Hippocampal Form': ['Hippocampal_Formation'],
            'Striatum':['Striatum'],
            'CC': ['Corpus_Callosum'],
+           'Mesencephalon': ['Mesencephalon'],
+
 
        } 
         

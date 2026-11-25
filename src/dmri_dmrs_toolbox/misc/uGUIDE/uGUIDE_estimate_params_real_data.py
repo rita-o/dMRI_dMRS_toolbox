@@ -85,7 +85,13 @@ def get_slice_and_masks(res, mask_map, mask_degeneracy, slice_idx, ax_plot, para
     return res_slice, mask_slice, deg_slice
 
 
-
+def save_map(data, dwi_img, path):
+    # Publish each file after writing it so it can be opened during fitting.
+    tmp_path = path.with_name(f".tmp_{path.name}")
+    nib.Nifti1Image(data, affine=dwi_img.affine).to_filename(tmp_path)
+    tmp_path.replace(path)
+ 
+    
 # ============================================================
 # Main function
 # ============================================================
@@ -96,7 +102,8 @@ def main_model_fit(main_folder, results_folder, dwi_path, mask_path,
     name_extension = ""
     ax_plot = 2
     n_jobs = 7
-    
+    import torch
+
     if model.lower() == "nexi":
         nf_features = 14
     elif model.lower() == "sandix":
@@ -173,119 +180,83 @@ def main_model_fit(main_folder, results_folder, dwi_path, mask_path,
     # ============================================================
     # Either load existing maps or compute them
     # ============================================================
-    if all_map_files_exist:
-        print("All output map files already exist. Loading existing results.")
-
-        param_map_nii = nib.load(map_file).get_fdata()
-        mask_map_nii = nib.load(mask_file).get_fdata()
-        degeneracy_map_nii = nib.load(degeneracy_file).get_fdata()
-        uncertainty_map_nii = nib.load(uncertainty_file).get_fdata()
-        ambiguity_map_nii = nib.load(ambiguity_file).get_fdata()
-
+    completed_file = results_folder / f"uGUIDE_completed_{model}{name_extension}.nii.gz"
+    n_params = len(config["prior_postprocessing"])
+    map_shape = (*mask_data.shape, n_params)
+ 
+    map_specs = [
+        (map_file, np.float32),
+        (mask_file, np.uint8),
+        (degeneracy_file, np.uint8),
+        (uncertainty_file, np.float32),
+        (ambiguity_file, np.float32),
+    ]
+ 
+    # Select valid voxels and sort by z, then x, then y.
+    i, j, k = np.nonzero(mask_data)
+    valid = np.isfinite(dwi_data[i, j, k, :]).all(axis=1)
+    i, j, k = i[valid], j[valid], k[valid]
+    order = np.lexsort((j, i, k))
+    i, j, k = i[order], j[order], k[order]
+ 
+    # If complete map exists, get the corresponding indices and compute the indices that are missing
+    if completed_file.exists():
+        completed = np.array(nib.load(completed_file).dataobj, dtype=np.uint8)
+        maps = [
+            np.array(nib.load(path).dataobj, dtype=dtype)
+            for path, dtype in map_specs
+        ]
+        if completed.shape != mask_data.shape or any(
+            result.shape != map_shape for result in maps
+        ):
+            raise ValueError("Checkpoint shapes do not match the current data.")
     else:
-        print("Some output map files are missing. Computing estimates.")
-
-        idx_mask = np.nonzero(mask_data)
-        print("Number of voxels in mask:", idx_mask[0].shape[0])
-
-        valid = np.isfinite(dwi_data[idx_mask[0], idx_mask[1], idx_mask[2], :])
-        idx_mask_valid = np.where(np.sum(valid, axis=1) == dwi_data.shape[-1])[0]
-
-        idx_valid = [
-            idx_mask[0][idx_mask_valid],
-            idx_mask[1][idx_mask_valid],
-            idx_mask[2][idx_mask_valid],
-        ]
-
-        nb_voxels = idx_valid[0].shape[0]
-        print("Number of valid voxels to estimate:", nb_voxels)
-        print("Estimation of the microstructure parameters from the test signals")
-
-        start_time = time.time()
-
-        data_to_fit = dwi_data[
-            idx_valid[0],
-            idx_valid[1],
-            idx_valid[2],
-            :,
-        ]
-        
-        import torch
-        signal = torch.as_tensor(
-            data_to_fit,
-            dtype=torch.float32,
+        completed = np.zeros(mask_data.shape, dtype=np.uint8)
+        maps = [np.zeros(map_shape, dtype=dtype) for _, dtype in map_specs]
+    remaining = np.flatnonzero(completed[i, j, k] == 0)
+    already_completed = len(i) - len(remaining)
+ 
+    # Settings
+    config["voxel_batch_size"] = 16
+    config["nb_samples"] = 10_000
+    n_chunks = 10
+    processing_chunk_size = max(1, (len(i) + n_chunks - 1) // n_chunks)
+     
+    # Process chunks of data
+    for start in range(0, len(remaining), processing_chunk_size):
+        positions = remaining[start:start + processing_chunk_size]
+        coords = (i[positions], j[positions], k[positions])
+        signals = torch.as_tensor(dwi_data[coords], dtype=torch.float32)
+ 
+        # Estimate microstructure
+        estimates = estimate_microstructure(
+            signals,
+            config,
+            postprocessing=postprocess_NEXI_SANDIX,
+            plot=False,
         )
-        config["voxel_batch_size"] = 16
-        config["nb_samples"] = 10000
-        param_est, mask_est, mask_degeneracy_est, uncertainty_est, ambiguity_est = estimate_microstructure(
-               signal,
-               config,
-               postprocessing=postprocess_NEXI_SANDIX,
-               plot=False)
-   
-
-        stop_time = time.time()
-        print("Time to estimate parameters in all voxels in min:", (stop_time - start_time)/60)
-
-        n_params = len(config["prior_postprocessing"])
-
-        # Convert flat results from torch to NumPy
-        param_est = param_est.detach().cpu().numpy()
-        mask_est = mask_est.detach().cpu().numpy()
-        mask_degeneracy_est = mask_degeneracy_est.detach().cpu().numpy()
-        uncertainty_est = uncertainty_est.detach().cpu().numpy()
-        ambiguity_est = ambiguity_est.detach().cpu().numpy()
-        
-        nb_voxels = len(idx_valid[0])
-        n_params = len(config["prior_postprocessing"])
-        
-        assert signal.shape[0] == nb_voxels
-        assert param_est.shape == (nb_voxels, n_params)
-        
-        # Create full-volume maps
-        param_map_nii = np.zeros((*mask_data.shape, n_params),dtype=np.float32)
-        mask_map_nii = np.zeros( (*mask_data.shape, n_params), dtype=np.uint8)
-        degeneracy_map_nii = np.zeros((*mask_data.shape, n_params),dtype=np.uint8)
-        uncertainty_map_nii = np.zeros((*mask_data.shape, n_params),dtype=np.float32)
-        ambiguity_map_nii = np.zeros((*mask_data.shape, n_params), dtype=np.float32)
-        
-        # Insert all valid voxels at once
-        param_map_nii[idx_valid[0], idx_valid[1], idx_valid[2], :] = param_est
-        mask_map_nii[idx_valid[0], idx_valid[1], idx_valid[2], :] = mask_est
-        degeneracy_map_nii[idx_valid[0], idx_valid[1], idx_valid[2], :] = mask_degeneracy_est
-        uncertainty_map_nii[idx_valid[0], idx_valid[1], idx_valid[2], :] = uncertainty_est
-        ambiguity_map_nii[idx_valid[0], idx_valid[1], idx_valid[2], :] = ambiguity_est
-        
-
-        # param_map = np.zeros((*mask_data.shape, n_params), dtype=np.float32)
-        # mask_map = np.zeros((*mask_data.shape, n_params), dtype=np.uint8)
-        # mask_degeneracy = np.zeros((*mask_data.shape, n_params), dtype=np.uint8)
-        # uncertainty = np.zeros((*mask_data.shape, n_params), dtype=np.float32)
-        # ambiguity = np.zeros((*mask_data.shape, n_params), dtype=np.float32)
-
-        # for idx in range(nb_voxels):
-        #     i = idx_valid[0][idx]
-        #     j = idx_valid[1][idx]
-        #     k = idx_valid[2][idx]
-
-        #     param_map[i, j, k, :] = estimates[idx][0]
-        #     mask_map[i, j, k, :] = estimates[idx][1]
-        #     mask_degeneracy[i, j, k, :] = estimates[idx][2]
-        #     uncertainty[i, j, k, :] = estimates[idx][3]
-        #     ambiguity[i, j, k, :] = estimates[idx][4]
-
-        nib.Nifti1Image(param_map_nii.astype(np.float32), affine=dwi_img.affine).to_filename(map_file)
-        nib.Nifti1Image(mask_map_nii.astype(np.uint8), affine=dwi_img.affine).to_filename(mask_file)
-        nib.Nifti1Image(degeneracy_map_nii.astype(np.uint8), affine=dwi_img.affine).to_filename(degeneracy_file)
-        nib.Nifti1Image(uncertainty_map_nii.astype(np.float32), affine=dwi_img.affine).to_filename(uncertainty_file)
-        nib.Nifti1Image(ambiguity_map_nii.astype(np.float32), affine=dwi_img.affine).to_filename(ambiguity_file)
-
-        print("Saved computed maps:")
-        print(map_file)
-        print(mask_file)
-        print(degeneracy_file)
-        print(uncertainty_file)
-        print(ambiguity_file)
+ 
+        for result, estimate in zip(maps, estimates):
+            result[coords] = estimate.detach().cpu().numpy()
+            
+        # Save maps
+        for result, (path, _) in zip(maps, map_specs):
+            save_map(result, dwi_img, path)
+ 
+        # Record completion only after all five maps have been saved.
+        completed[coords] = 1
+        save_map(completed, dwi_img, completed_file)
+ 
+        done = already_completed + start + len(positions)
+        print(f"Checkpoint saved: {done:,}/{len(i):,} voxels", flush=True)
+ 
+    (
+        param_map_nii,
+        mask_map_nii,
+        degeneracy_map_nii,
+        uncertainty_map_nii,
+        ambiguity_map_nii,
+    ) = maps
 
     # ============================================================
     # Plot results

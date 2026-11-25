@@ -92,7 +92,7 @@ def Step4_modelling(cfg):
                 output_path = bids_strc_analysis.get_path()
                 
                 # Just run model if it doesn't exist on the folder yet
-                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                if (not os.path.exists(output_path) or cfg['redo_modelling']) and 'DTI_DKI' in cfg['signal_representations']:
                     run_dtidki_designer(
                              cfg,
                              bids_strc_prep,
@@ -232,7 +232,7 @@ def Step4_modelling(cfg):
                 output_path = bids_STE_out.get_path()
                 
                 # Just run model if it doesn't exist on the folder yet
-                if not os.path.exists(output_path) or cfg['redo_modelling']:
+                if (not os.path.exists(output_path) or cfg['redo_modelling']) and 'microFA' in cfg['signal_representations']:
                     compute_micro_FA(bids_LTE, bids_STE, mask, output_path)
                        
                 if os.path.exists(output_path):

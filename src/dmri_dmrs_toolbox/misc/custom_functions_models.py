@@ -222,6 +222,8 @@ def prepare_sandi_mp_inputs(inputs, bvecs, subj):
     return dst_dir, sub, ses
        
 def prepare_model_inputs(model, bids_strc_prep, input_path, subj, sess, cfg, data_path, docker_path):
+    
+    remove_folder(input_path)
     create_directory(input_path)
 
     inputs = {

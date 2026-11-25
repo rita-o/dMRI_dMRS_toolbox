@@ -98,7 +98,7 @@ def Step3_preproc_STE(cfg):
                                   
             # B0 extract for each scan and REGISTRATION of brain mask with avg B0 - fwd scans
             for paths_dwi in paths_dwi_fwd:
-                if paths_dwi and not os.path.exists(paths_dwi.replace('dwi.nii.gz', 'b0_mask.nii.gz')):
+                if paths_dwi and (not os.path.exists(paths_dwi.replace('dwi.nii.gz', 'b0_mask.nii.gz')) or cfg['redo_firstmask']):
                     
                     # Extract b0 volume
                     extract_vols(paths_dwi, paths_dwi.replace('dwi.nii.gz', 'b0.nii.gz'), 0, 1, cfg)
@@ -134,7 +134,7 @@ def Step3_preproc_STE(cfg):
            
             # B0 extract for each scan - rev scans
             for paths_dwi in paths_dwi_rev:
-                if paths_dwi and not os.path.exists(paths_dwi.replace('dwi.nii.gz', 'b0_mask.nii.gz')):
+                if paths_dwi and (not os.path.exists(paths_dwi.replace('dwi.nii.gz', 'b0_mask.nii.gz')) or cfg['redo_firstmask']):
                     
                     # Extract b0 volume
                     extract_vols(paths_dwi, paths_dwi.replace('dwi.nii.gz', 'b0.nii.gz'), 0, 1, cfg)
